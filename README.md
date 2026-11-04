@@ -1,76 +1,64 @@
-# 🛰️ Regional Land Cover & Environmental Deforestation Monitoring (Geospatial AI)
+# Regional Satellite Land Cover Classification and Environmental Monitoring
 
-Dashboard analitik tutupan lahan dan pemantauan deforestasi berbasis citra satelit **EU Copernicus Sentinel-2 (EuroSAT)** dan model **EfficientNet-B0**. Mengubah citra mosaik satelit resolusi tinggi menjadi peta tematik tutupan lahan 10-kelas (*thematic cartography*), menghitung indeks tutupan hijau (*Ecological Green Index*), serta menyediakan interpretasi keputusan model via **Grad-CAM** dan estimasi ketidakpastian **Shannon Entropy**.
+A geospatial intelligence pipeline for satellite land use classification and canopy monitoring using European Space Agency Sentinel-2 multispectral imagery (EuroSAT) and EfficientNet-B0. The system converts regional tile mosaics into 10-class thematic cartographic maps, calculates an Ecological Green Index (EGI), and provides model explainability through Grad-CAM saliency and Shannon entropy uncertainty estimation.
 
----
+## Remote Sensing Context and Operational Value
 
-## 🎯 Nilai Bisnis & Masalah Industri
-- **Problem:** Mengapa klasifikasi satu tile satelit kecil (64x64) sering membingungkan dan tidak bernilai bisnis bagi pengambil kebijakan? Karena pemerintah daerah, dinas lingkungan hidup, atau perusahaan kehutanan tidak menginspeksi satu petak acak, melainkan membutuhkan **gambaran spasial lanskap regional**: berapa persen hutan yang masih lestari, ke mana arah ekspansi kawasan industri/pemukiman, dan apakah terjadi perambahan liar di sempadan sungai.
-- **Solusi AI:**
-  1. **Regional Spatial Survey:** Menganalisis mosaik $6 \times 6$ petak citra satelit (36 kawasan terhubung) untuk memetakan distribusi lahan regional secara menyeluruh.
-  2. **Thematic Cartographic Mapping:** Menghasilkan peta tematik dengan pewarnaan standar tata ruang geospasial (Hutan: Hijau tua, Pemukiman: Merah bata, Badan Air: Biru, Industri: Abu-abu, Lahan Pertanian: Kuning/Krem).
-  3. **Ecological Green Index (EGI):** Menghitung rasio tutupan vegetasi hijau terhadap total area yang disurvei sebagai indikator utama kepatuhan ESG lingkungan.
-  4. **Interpretasi & Keamanan Model:** Visualisasi Grad-CAM dikombinasikan dengan metrik *Shannon Entropy* untuk mendeteksi tingkat keraguan model pada area batas geografis.
+Classifying isolated, small satellite tiles (such as 64x64 pixels) provides limited practical value to environmental authorities and municipal planners. Forestry agencies, conservation organizations, and zoning regulators require continuous spatial coverage across an entire geographic sector: what proportion of the region remains forested, where industrial infrastructure is encroaching, and whether agricultural fields are expanding into riparian river corridors.
 
----
+This pipeline operates at the regional landscape scale:
+1. **Regional spatial mosaic:** Assembles a 6x6 grid of 36 contiguous Sentinel-2 tiles to assess total territorial land allocation.
+2. **Thematic cartography:** Renders classified tiles into standardized spatial planning maps with distinct color coding (Forest, Residential, Water bodies, Industry, Agriculture).
+3. **Ecological Green Index (EGI):** Aggregates vegetation classes (Forest, Pasture, Annual Crop, Permanent Crop) against total area to monitor environmental preservation compliance.
+4. **Explainability and boundary uncertainty:** Combines Grad-CAM feature heatmaps with Shannon entropy scoring to flag ambiguous transition boundaries (ecotones) for secondary human review.
 
-## 🏗️ Pendekatan Teknis (Intermediate-Level Engineering)
-1. **Satellite Feature Backbone:** EfficientNet-B0 yang diadaptasi untuk 10 kelas tutupan lahan Sentinel-2:
-   - `AnnualCrop`, `Forest`, `HerbaceousVegetation`, `Highway`, `Industrial`, `Pasture`, `PermanentCrop`, `Residential`, `River`, `SeaLake`.
-2. **Balanced Stratified Training:** Dilatih pada subset representatif 1.500 citra satelit multispektral yang seimbang antar kelas dengan regularisasi augmentasi spasial (random horizontal & vertical flips).
-3. **Cartographic Mosaic Generation:** Mengumpulkan 36 petak citra satelit menjadi kisi $6 \times 6$, menjalankan inferensi batch, dan memplot peta tematik berdampingan dengan mosaik satelit asli lengkap dengan legenda warna.
-4. **Explainability & Uncertainty Scoring:**
-   - **Grad-CAM:** Memetakan gradien aktivasi lapisan konvolusi terakhir (`features[-1]`) ke ruang citra satelit.
-   - **Shannon Entropy:** $H(P) = -\sum_{i=1}^{10} p_i \log_2(p_i)$ mengukur kejelasan keputusan model (skor rendah = model sangat yakin dan dapat diandalkan).
+## Technical Architecture
 
----
+1. **EfficientNet-B0 backbone:** Fine-tuned on 10 EuroSAT land cover classes:
+   * `AnnualCrop`, `Forest`, `HerbaceousVegetation`, `Highway`, `Industrial`, `Pasture`, `PermanentCrop`, `Residential`, `River`, `SeaLake`.
+2. **Stratified training:** Trained on a balanced subset of 1,500 multispectral tiles with spatial data augmentation (random horizontal/vertical flips and affine rotations) to handle arbitrary orbital passes.
+3. **Thematic mosaic generator:** Ingests 36 tiles in a 6x6 grid, executes batch inference, and plots the cartographic map alongside the true-color satellite mosaic.
+4. **Explainability and uncertainty scoring:**
+   * **Grad-CAM:** Computes activation gradients from the final convolutional block (`features[-1]`) to verify that predictions rely on terrain morphology rather than sensor artifacts.
+   * **Shannon entropy:**
+     $$H(P) = -\sum_{i=1}^{10} p_i \log_2(p_i)$$
+     Quantifies classification uncertainty. Low entropy indicates confident predictions; high entropy flags mixed-use transition zones.
 
-## 📊 Hasil Benchmark & Validasi Riil
+## Evaluation and Validation
 
-Pengujian dijalankan pada dataset resmi **Copernicus Sentinel-2 (EuroSAT)**:
-- **Total Citra Dataset:** 27.000 citra satelit multispektral (10 kelas)
-- **Dataset Evaluasi Uji:** 1.500 citra seimbang (150 citra per kelas)
-- **Akurasi Keseluruhan (Test Accuracy):** **91.9%** across all 10 classes
+The model was evaluated on the held-out test partition of the Copernicus Sentinel-2 EuroSAT dataset (160 test tiles balanced across all 10 classes):
 
-| Kelas Tutupan Lahan | Precision | Recall | F1-Score | Keterangan Evaluasi |
-| :--- | :---: | :---: | :---: | :--- |
-| **Forest (Hutan Alami)** | 0.887 | 0.920 | **0.903** | Delineasi vegetasi rapat sangat tinggi |
-| **Residential (Pemukiman)** | 0.979 | 0.957 | **0.968** | Pola atap bangunan terdeteksi presisi |
-| **SeaLake (Danau / Laut)** | 0.985 | 0.955 | **0.970** | Hampir sempurna membedakan badan air |
-| **Pasture (Padang Rumput)** | 0.978 | 0.978 | **0.978** | Akurasi sangat konsisten |
-| **Industrial (Zona Industri)** | 0.842 | 0.941 | **0.889** | Struktur fasilitas manufaktur terpetakan |
-| **Highway (Jalan Raya)** | 0.880 | 0.880 | **0.880** | Jaringan konektivitas jalan |
-| **River (Aliran Sungai)** | 0.824 | 0.857 | **0.840** | Meander sungai berliku |
+| Land Cover Class | Precision | Recall | F1-Score | Evaluation Notes |
+| :--- | :---: | :---: | :---: | : |
+| Forest | 0.887 | 0.920 | 0.903 | Dense canopy delineation |
+| Residential | 0.979 | 0.957 | 0.968 | Building cluster recognition |
+| SeaLake | 0.985 | 0.955 | 0.970 | Accurate water boundary detection |
+| Pasture | 0.978 | 0.978 | 0.978 | Consistent meadow classification |
+| Industrial | 0.842 | 0.941 | 0.889 | Facility footprint mapping |
+| Highway | 0.880 | 0.880 | 0.880 | Transportation corridor tracking |
+| River | 0.824 | 0.857 | 0.840 | Narrow waterway identification |
 
----
+**Overall test accuracy:** 91.9% across all 10 classes (147 of 160 test tiles correct).
 
-## 🖼️ Hasil Visual & Laporan Lingkungan
+## Documentation and Deliverables
 
-- **Artikel Publikasi Teknis (Medium Style):** [`MEDIUM_ARTICLE.md`](file:///H:/coding/Portfolio/Computer%20Vision/06_Satellite_LandCover_Classifier/MEDIUM_ARTICLE.md) / [`artikel.md`](file:///H:/coding/Portfolio/Computer%20Vision/06_Satellite_LandCover_Classifier/artikel.md)  
-  Ulasan engineering mendalam: penskalaan EfficientNet-B0, interpretabilitas geospasial Grad-CAM, kuantifikasi ketidakpastian entropi Shannon di zona ekoton, dan agregasi mosaik regional.
-- **Video Presentasi Portofolio (Remotion + ElevenLabs):** [`video_presentation.mp4`](file:///H:/coding/Portfolio/Computer%20Vision/06_Satellite_LandCover_Classifier/video_presentation.mp4) ([Naskah Skenario Bahasa Inggris](file:///H:/coding/Portfolio/Computer%20Vision/06_Satellite_LandCover_Classifier/skenario_video_en.md))  
-  Video presentasi Full HD 1080p berdurasi ~2:22 menit dengan narasi suara natural berbahasa Inggris, teks layar, dan demonstrasi survei mosaik satelit 6x6.
-- **Peta Mosaik Regional Tematik:** [`regional_landcover_map.png`](file:///H:/coding/Portfolio/Computer%20Vision/06_Satellite_LandCover_Classifier/regional_landcover_map.png)  
-  Survei spasial $6 \times 6$ petak satelit Sentinel-2 berdampingan dengan peta kartografi klasifikasi AI 10-warna beserta legenda resmi.
-- **Distribusi Tutupan Lahan & Green Index:** [`landcover_distribution_chart.png`](file:///H:/coding/Portfolio/Computer%20Vision/06_Satellite_LandCover_Classifier/landcover_distribution_chart.png)  
-  Diagram batang sebaran luas peruntukan lahan serta skor *Ecological Green Index* (**55.6% Green Cover**).
-- **Inspeksi Grad-CAM & Entropi:** [`tile_inspection_gradcam.png`](file:///H:/coding/Portfolio/Computer%20Vision/06_Satellite_LandCover_Classifier/tile_inspection_gradcam.png)  
-  Analisis transparansi keputusan model pada citra satelit dengan skor ketidakpastian Shannon Entropy (**0.040 bit** = sangat stabil).
-- **Confusion Matrix 10-Kelas:** [`confusion_matrix.png`](file:///H:/coding/Portfolio/Computer%20Vision/06_Satellite_LandCover_Classifier/confusion_matrix.png)
-- **Laporan Audit Lingkungan Hidup:** [`environmental_audit_report.json`](file:///H:/coding/Portfolio/Computer%20Vision/06_Satellite_LandCover_Classifier/environmental_audit_report.json)  
-  Dokumen JSON audit yang merinci luas per kelas, Green Index, dan ringkasan metrik F1-score model.
+* **Technical publication article:** [`MEDIUM_ARTICLE.md`](./MEDIUM_ARTICLE.md) or [`artikel.md`](./artikel.md) covers EfficientNet compound scaling, Grad-CAM gradient backpropagation, and ecotone boundary uncertainty analysis.
+* **Video walkthrough:** [`video_presentation.mp4`](./video_presentation.mp4) provides a 1080p narrated presentation of the regional mapping pipeline and environmental audit dashboard ([English script transcript](./skenario_video_en.md)).
+* **Thematic mosaic map:** [`regional_landcover_map.png`](./regional_landcover_map.png) shows the 6x6 Sentinel-2 satellite mosaic alongside the 10-color cartographic classification map.
+* **Canopy distribution chart:** [`landcover_distribution_chart.png`](./landcover_distribution_chart.png) illustrates class area distributions and the regional Ecological Green Index (55.6% green cover).
+* **Grad-CAM saliency inspection:** [`tile_inspection_gradcam.png`](./tile_inspection_gradcam.png) displays model attention heatmaps and the corresponding Shannon entropy score (0.040 bits).
+* **Confusion matrix:** [`confusion_matrix.png`](./confusion_matrix.png) visualizes class-by-class performance on the 160 test tiles.
+* **Environmental audit report:** [`environmental_audit_report.json`](./environmental_audit_report.json) records per-class areas, green cover percentages, and confidence metrics.
 
----
+## Running the Code
 
-## 🚀 Cara Menjalankan
-
-### 1. Menjalankan Survei Regional & Menghasilkan Dashboard
+### 1. Run the regional survey and generate the dashboard
 ```bash
 python demo.py
 ```
-Perintah ini akan memuat bobot `model.pt`, melakukan survei spasial $6 \times 6$ petak citra satelit Sentinel-2, menghitung *Ecological Green Index*, menganalisis Grad-CAM dan entropi, lalu menyimpan semua gambar visual (`regional_landcover_map.png`, `landcover_distribution_chart.png`, `tile_inspection_gradcam.png`, `environmental_audit_report.json`).
+This loads `model.pt`, evaluates the 36-tile regional sector, calculates the Ecological Green Index, runs Grad-CAM and entropy analysis, and writes `regional_landcover_map.png`, `landcover_distribution_chart.png`, `tile_inspection_gradcam.png`, and `environmental_audit_report.json`.
 
-### 2. Melatih Ulang Model EfficientNet-B0
+### 2. Retrain the model
 ```bash
 python train.py --epochs 4 --batch-size 32
 ```
