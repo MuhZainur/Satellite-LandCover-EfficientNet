@@ -1,0 +1,54 @@
+{
+  "project_objective": "Regional Satellite Land Cover & Environmental Deforestation Monitoring",
+  "satellite_sensor": "Sentinel-2 Multi-Spectral Instrument (MSI)",
+  "survey_sector_tiles_analyzed": 36,
+  "ecological_green_index_pct": 55.6,
+  "environmental_status": "HIGH URBANIZATION: Sector dominated by non-vegetative infrastructure.",
+  "land_allocation_breakdown": {
+    "AnnualCrop": {
+      "tile_count": 4,
+      "percentage": 11.1
+    },
+    "Forest": {
+      "tile_count": 4,
+      "percentage": 11.1
+    },
+    "HerbaceousVegetation": {
+      "tile_count": 6,
+      "percentage": 16.7
+    },
+    "Highway": {
+      "tile_count": 3,
+      "percentage": 8.3
+    },
+    "Industrial": {
+      "tile_count": 2,
+      "percentage": 5.6
+    },
+    "Pasture": {
+      "tile_count": 1,
+      "percentage": 2.8
+    },
+    "PermanentCrop": {
+      "tile_count": 5,
+      "percentage": 13.9
+    },
+    "Residential": {
+      "tile_count": 5,
+      "percentage": 13.9
+    },
+    "River": {
+      "tile_count": 2,
+      "percentage": 5.6
+    },
+    "SeaLake": {
+      "tile_count": 4,
+      "percentage": 11.1
+    }
+  },
+  "model_inference_telemetry": {
+    "mean_classification_confidence_pct": 97.5,
+    "entropy_uncertainty_score": 0.04,
+    "deployment_format": "PyTorch (.pt) + ONNX Runtime (.onnx)"
+  }
+}
